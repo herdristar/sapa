@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAPA - Survei Adaptif ASN Demak Tahun 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = { theme: { extend: { colors: { zettDark: '#0f172a', zettCard: '#1e293b', zettGreen: '#10b981', zettGlow: '#34d399' } } } }
+    </script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        .bg-blob { position: fixed; border-radius: 50%; filter: blur(100px); z-index: -10; opacity: 0.4; pointer-events: none; }
+        .blob-1 { top: -10%; left: -10%; width: 40vw; height: 40vw; background: #047857; }
+        .blob-2 { bottom: -10%; right: -10%; width: 50vw; height: 50vw; background: #064e3b; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .input-glass { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.2); color: white; transition: all 0.3s ease; }
+        .input-glass:focus { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); outline: none; }
+        .radio-card input:checked + div { background-color: rgba(16, 185, 129, 0.2); border-color: #10b981; }
+        .loader { border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #10b981; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden-view { display: none !important; }
+        .progress-bar-fill { transition: width 1s ease-in-out; }
+        .modal-glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col items-center">
+    
+    <div class="bg-blob blob-1"></div><div class="bg-blob blob-2"></div>
+
+    <nav class="w-full p-4 md:px-8 flex justify-between items-center border-b border-white/10 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-zettGreen flex items-center justify-center text-white font-bold text-xl"><i class="fa-solid fa-leaf"></i></div>
+            <div>
+                <h1 class="font-bold text-base md:text-xl leading-tight text-white">SAPA</h1>
+                <p class="text-[10px] md:text-xs text-gray-300">Survei Adaptif ASN Demak Tahun 2026</p>
+            </div>
+        </div>
+        <button onclick="switchView('home')" class="text-xs md:text-sm px-3 py-1.5 rounded-md hover:bg-white/10"><i class="fa-solid fa-home mr-1"></i> Home</button>
+    </nav>
+
+    <!-- CUSTOM ALERTS -->
+    <div id="custom-alert" class="fixed inset-0 z-[10000] hidden-view flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div class="modal-glass w-full max-w-sm rounded-2xl p-6 text-center animate-[scaleIn_0.3s_ease-out]">
+            <div class="w-12 h-12 bg-yellow-500/20 text-yellow-400 rounded-full flex items-center justify-center text-xl mx-auto mb-4"><i id="alert-icon" class="fa-solid fa-triangle-exclamation"></i></div>
+            <h3 id="alert-title" class="text-lg font-bold text-white mb-2">Perhatian</h3>
+            <div id="alert-msg" class="text-sm text-gray-300 mb-6 text-left max-h-[60vh] overflow-y-auto"></div>
+            <button onclick="closeAlert()" class="w-full py-2.5 rounded-lg bg-zettGreen text-white font-semibold">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL LOGIN -->
+    <div id="modal-login" class="fixed inset-0 z-[9999] hidden-view flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div class="modal-glass w-full max-w-sm rounded-2xl p-6 text-center">
+            <div class="w-14 h-14 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"><i class="fa-solid fa-lock"></i></div>
+            <h3 class="text-xl font-bold text-white mb-2">Akses Terkunci</h3>
+            <p class="text-sm text-gray-400 mb-6">Masukkan PIN untuk masuk ke Dashboard.</p>
+            <form onsubmit="event.preventDefault(); submitLoginAdmin();">
+                <input type="password" id="inp_pin" class="input-glass w-full rounded-lg px-4 py-3 text-center tracking-[0.5em] font-bold text-lg mb-4" placeholder="••••••" required>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeLoginModal()" class="flex-1 py-2.5 rounded-lg border border-white/20 text-gray-300">Batal</button>
+                    <button type="submit" class="flex-1 py-2.5 rounded-lg bg-zettGreen text-white font-semibold">Buka</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL UBAH PIN -->
+    <div id="modal-ubah-pin" class="fixed inset-0 z-[9999] hidden-view flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div class="modal-glass w-full max-w-sm rounded-2xl p-6 text-center animate-[scaleIn_0.3s_ease-out]">
+            <div class="w-14 h-14 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"><i class="fa-solid fa-key"></i></div>
+            <h3 class="text-xl font-bold text-white mb-2">Ubah PIN Akses</h3>
+            <p class="text-sm text-gray-400 mb-6">Perbarui PIN Anda untuk keamanan data.</p>
+            <form onsubmit="event.preventDefault(); submitUbahPin();">
+                <input type="password" id="inp_pin_lama" class="input-glass w-full rounded-lg px-4 py-3 text-center tracking-[0.5em] font-bold text-lg mb-3" placeholder="PIN Lama" required>
+                <input type="password" id="inp_pin_baru" class="input-glass w-full rounded-lg px-4 py-3 text-center tracking-[0.5em] font-bold text-lg mb-4 border-emerald-500" placeholder="PIN Baru" required>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeUbahPinModal()" class="flex-1 py-2.5 rounded-lg border border-white/20 text-gray-300">Batal</button>
+                    <button type="submit" class="flex-1 py-2.5 rounded-lg bg-blue-600 text-white font-semibold">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <main class="w-full max-w-6xl p-3 md:p-8 flex-grow z-50 flex flex-col justify-start" id="app-container">
+        
+        <!-- ================= VIEW 1: HOME ================= -->
+        <div id="view-home" class="view-section w-full max-w-4xl mx-auto flex flex-col items-center">
+            <div class="text-center mb-6 w-full mt-4">
+                <h2 class="text-2xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-zettGlow mb-3">Survei Adaptif ASN</h2>
+                <div class="inline-flex items-center gap-2 bg-zettGreen/10 border border-zettGreen/30 text-zettGlow text-xs font-bold px-4 py-2 rounded-full mt-2">
+                    <i class="fa-solid fa-users-viewfinder"></i> Partisipasi Daerah: <span id="home-total-respondents" class="text-white font-mono">0</span> ASN
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 w-full max-w-2xl mb-8">
+                <div onclick="startSurvey()" class="glass-card rounded-2xl p-6 cursor-pointer hover:-translate-y-1 transition-transform text-center group">
+                    <div class="w-14 h-14 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-2xl mx-auto mb-4 group-hover:scale-110 transition"><i class="fa-solid fa-user-tie"></i></div>
+                    <h3 class="text-lg font-bold mb-1">Saya Responden</h3><p class="text-xs text-gray-400">Mulai isi kuesioner mandiri.</p>
+                </div>
+                <div onclick="openLoginModal()" class="glass-card rounded-2xl p-6 cursor-pointer hover:-translate-y-1 transition-transform text-center relative group">
+                    <div class="absolute top-3 right-3 text-gray-500 text-xs"><i class="fa-solid fa-lock"></i></div>
+                    <div class="w-14 h-14 rounded-full bg-zettGreen/20 text-zettGlow flex items-center justify-center text-2xl mx-auto mb-4 group-hover:scale-110 transition"><i class="fa-solid fa-chart-pie"></i></div>
+                    <h3 class="text-lg font-bold mb-1">Panel Admin</h3><p class="text-xs text-gray-400">Gerbang masuk Admin & Pimpinan OPD.</p>
+                </div>
+            </div>
+
+            <!-- RESTORED: Panel Agregat & Panduan di Home -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
+                <!-- Panel Agregat Home (Global Pemda) -->
+                <div class="glass-card rounded-2xl p-5 md:p-8 w-full">
+                    <h3 class="text-base md:text-lg font-bold text-white mb-0.5"><i class="fa-solid fa-chart-simple text-zettGlow mr-2"></i>Live Score Kabupaten</h3>
+                    <p class="text-[11px] text-gray-400 mb-4 border-b border-white/10 pb-2">Indeks Agregat ($I_{org}$) Kabupaten Demak Saat Ini</p>
+                    <div id="home-aggregate-loader" class="text-center py-6 text-xs text-gray-400 animate-pulse">Menghubungkan ke basis data...</div>
+                    <div id="home-aggregate-content" class="hidden-view flex flex-col sm:flex-row items-center gap-6">
+                        <div class="relative w-24 h-24 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0 home-donut" style="background: conic-gradient(#10b981 0deg, #1e293b 0);">
+                            <div class="absolute w-20 h-20 bg-zettCard rounded-full flex items-center justify-center"><span id="home-iorg-val" class="font-bold text-base md:text-xl text-white">0%</span></div>
+                        </div>
+                        <div class="w-full space-y-3 text-xs">
+                            <div><div class="flex justify-between mb-0.5"><span class="text-gray-300">D1: Adaptasi Perubahan</span><span id="h-d1-val" class="font-bold text-zettGlow">0%</span></div><div class="w-full bg-black/40 rounded-full h-1.5"><div id="h-d1-bar" class="bg-zettGlow h-1.5 rounded-full progress-bar-fill" style="width: 0%"></div></div></div>
+                            <div><div class="flex justify-between mb-0.5"><span class="text-gray-300">D2: Inovasi & Kreativitas</span><span id="h-d2-val" class="font-bold text-blue-400">0%</span></div><div class="w-full bg-black/40 rounded-full h-1.5"><div id="h-d2-bar" class="bg-blue-400 h-1.5 rounded-full progress-bar-fill" style="width: 0%"></div></div></div>
+                            <div><div class="flex justify-between mb-0.5"><span class="text-gray-300">D3: Sikap Proaktif</span><span id="h-d3-val" class="font-bold text-yellow-400">0%</span></div><div class="w-full bg-black/40 rounded-full h-1.5"><div id="h-d3-bar" class="bg-yellow-400 h-1.5 rounded-full progress-bar-fill" style="width: 0%"></div></div></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Panduan -->
+                <div class="glass-card rounded-2xl p-5 md:p-8 w-full">
+                    <div class="flex items-center gap-2 mb-4 border-b border-white/10 pb-2"><div class="w-7 h-7 rounded bg-blue-500/20 text-blue-300 flex items-center justify-center text-xs"><i class="fa-solid fa-book-open-reader"></i></div><h3 class="text-base md:text-lg font-bold text-white">Panduan Ringkas</h3></div>
+                    <div class="space-y-3.5 text-xs">
+                        <div class="flex items-start gap-3"><div class="w-5 h-5 rounded-full bg-zettGreen/10 text-zettGlow flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5 border border-zettGreen/30">1</div><div><p class="text-gray-300 font-semibold mb-0.5">Isi Valid Identitas</p><p class="text-gray-400 text-[11px]">Siapkan 18 digit angka NIP resmi dan unit organisasi.</p></div></div>
+                        <div class="flex items-start gap-3"><div class="w-5 h-5 rounded-full bg-zettGreen/10 text-zettGlow flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5 border border-zettGreen/30">2</div><div><p class="text-gray-300 font-semibold mb-0.5">Penilaian Skala Likert</p><p class="text-gray-400 text-[11px]">Beri jawaban objektif dari rentang nilai 1 s.d 5.</p></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 2: SURVEY WIZARD ================= -->
+        <div id="view-survey" class="view-section hidden-section w-full max-w-3xl mx-auto hidden-view">
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="bg-black/20 p-4 border-b border-white/10 flex justify-between text-xs md:text-sm"><span id="wizard-title" class="font-semibold text-zettGlow">Identitas Diri</span><span class="text-gray-400">Step <span id="current-step-indicator">1</span> dari 4</span></div>
+                <div class="p-4 md:p-8">
+                    <form id="surveyForm" novalidate onsubmit="event.preventDefault(); nextWizardStep();">
+                        <div id="step-0" class="wizard-step">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label class="block text-xs text-gray-300 mb-1">NIP (18 Digit)</label><input type="text" id="inp_nip" required maxlength="18" minlength="18" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 18)" class="input-glass w-full rounded-lg px-3 py-2 text-sm"></div>
+                                <div><label class="block text-xs text-gray-300 mb-1">Nama Lengkap</label><input type="text" id="inp_nama" required class="input-glass w-full rounded-lg px-3 py-2 text-sm"></div>
+                                <div class="md:col-span-2"><label class="block text-xs text-gray-300 mb-1">Organisasi Perangkat Daerah</label><select id="inp_opd" required class="input-glass w-full rounded-lg px-3 py-2 text-sm text-white [&>option]:bg-zettCard"><option value="">-- Pilih OPD --</option></select></div>
+                                <div class="md:col-span-2"><label class="block text-xs text-gray-300 mb-1">Jabatan</label><input type="text" id="inp_jabatan" required class="input-glass w-full rounded-lg px-3 py-2 text-sm"></div>
+                            </div>
+                        </div>
+                        <div id="step-1" class="wizard-step hidden-view"><h3 class="text-sm font-bold mb-3 text-white">Dimensi 1: Adaptasi Terhadap Perubahan</h3><div id="q-container-1" class="space-y-4"></div></div>
+                        <div id="step-2" class="wizard-step hidden-view"><h3 class="text-sm font-bold mb-3 text-white">Dimensi 2: Inovasi & Kreativitas</h3><div id="q-container-2" class="space-y-4"></div></div>
+                        <div id="step-3" class="wizard-step hidden-view"><h3 class="text-sm font-bold mb-3 text-white">Dimensi 3: Sikap Proaktif</h3><div id="q-container-3" class="space-y-4"></div></div>
+                        
+                        <div class="mt-6 flex justify-between pt-4 border-t border-white/10 text-xs">
+                            <button type="button" id="btn-prev" onclick="prevWizardStep()" class="hidden px-4 py-2 rounded-lg border border-white/20 text-gray-300">Kembali</button>
+                            <div id="btn-prev-spacer" class="flex-grow"></div> 
+                            <button type="submit" id="btn-next" class="px-5 py-2 rounded-lg bg-zettGreen text-white font-semibold">Lanjut</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 3: HASIL ================= -->
+        <div id="view-result" class="view-section hidden-section w-full max-w-2xl mx-auto hidden-view">
+            <div class="glass-card rounded-2xl p-6 md:p-8 text-center">
+                <h2 class="text-xl font-bold text-white mb-5 border-b border-white/10 pb-4">RAPOR ADAPTABILITAS ASN</h2>
+                <div class="grid grid-cols-2 gap-3 text-left bg-black/20 p-4 rounded-xl border border-white/5 mb-5 text-xs">
+                    <div><span class="text-gray-500 block text-[10px]">Nama Lengkap</span><strong id="print-nama" class="text-white">...</strong></div>
+                    <div><span class="text-gray-500 block text-[10px]">NIP</span><strong id="print-nip" class="text-white">...</strong></div>
+                    <div class="col-span-2"><span class="text-gray-500 block text-[10px]">OPD</span><strong id="print-opd" class="text-white">...</strong></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-left text-xs mb-6">
+                    <div class="bg-black/30 rounded-xl p-4 border border-white/10"><p class="text-[10px] text-gray-400">Skor Indeks</p><div class="flex items-end gap-1.5"><span id="res-indeks" class="text-3xl font-bold text-zettGlow">0</span><span class="text-sm text-gray-300">%</span></div></div>
+                    <div class="bg-black/30 rounded-xl p-4 border border-white/10"><p class="text-[10px] text-gray-400">Kategori</p><span id="res-kategori" class="text-lg font-bold text-white block mt-1">...</span></div>
+                </div>
+                <button onclick="switchView('home')" class="w-full px-4 py-2.5 rounded-lg border border-white/20 text-gray-300">Selesai & Kembali</button>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 4: ADMIN DASHBOARD ================= -->
+        <div id="view-admin" class="view-section hidden-section w-full hidden-view">
+            
+            <!-- RESTORED: Admin Tabs -->
+            <div class="flex border-b border-white/10 mb-6 text-xs md:text-sm" id="admin-tabs-nav">
+                <button onclick="switchAdminTab('analytics')" id="tab-btn-analytics" class="px-4 py-2 border-b-2 border-zettGreen text-white font-bold"><i class="fa-solid fa-chart-line mr-1"></i> Data Analytics</button>
+                <button onclick="switchAdminTab('users')" id="tab-btn-users" class="px-4 py-2 text-gray-400 font-medium hover:text-white transition"><i class="fa-solid fa-users-gear mr-1"></i> Manajemen Admin OPD</button>
+            </div>
+
+            <!-- TAB A: ANALYTICS -->
+            <div id="admin-tab-analytics" class="space-y-6">
+                <!-- RESTORED: Header Dashboard & Counters -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2"><i class="fa-solid fa-circle-check text-zettGreen text-sm"></i> Panel Ringkasan</h2>
+                        <p id="admin-profile-desc" class="text-xs text-gray-400">Otoritas...</p>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <div class="bg-zettGreen/15 border border-zettGreen/30 text-zettGlow px-3 py-1.5 rounded-lg font-medium">
+                            <i class="fa-solid fa-globe mr-1"></i> Pemda: <span id="stat-total-pemda" class="text-white font-bold">0</span> ASN
+                        </div>
+                        <div class="bg-blue-500/15 border border-blue-500/30 text-blue-300 px-3 py-1.5 rounded-lg font-medium">
+                            <i class="fa-solid fa-building mr-1"></i> Internal OPD: <span id="stat-total-opd" class="text-white font-bold">0</span> ASN
+                        </div>
+                        <button onclick="generateAIReport()" class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-lg shadow-purple-500/30 transition hover:scale-105"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI Report</button>
+                        <button onclick="downloadCSV()" class="bg-slate-700 text-white px-3 py-1.5 rounded-lg font-bold"><i class="fa-solid fa-file-csv mr-1"></i> Export</button>
+                        <button onclick="openUbahPinModal()" class="bg-white/10 text-white px-3 py-1.5 rounded-lg font-bold"><i class="fa-solid fa-key"></i> PIN</button>
+                        <button onclick="logoutAdmin()" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg font-bold">Keluar</button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="glass-card rounded-2xl p-5" id="panel-graph-global">
+                        <h3 class="text-base font-bold text-white mb-3">Agregat Kabupaten Demak</h3>
+                        <div class="flex items-center gap-4 text-xs">
+                            <div class="relative w-20 h-20 rounded-full bg-slate-700 flex items-center justify-center admin-donut-global" style="background: conic-gradient(#10b981 0deg, #1e293b 0);"><div class="absolute w-16 h-16 bg-zettCard rounded-full flex items-center justify-center"><span id="stat-iorg-global" class="font-bold text-white">0%</span></div></div>
+                            <div class="w-full space-y-2">
+                                <div><div class="flex justify-between mb-0.5"><span>D1: Adaptasi</span><span id="g-d1-val" class="font-bold text-zettGlow">0%</span></div><div class="w-full bg-black/40 h-1"><div id="g-d1-bar" class="bg-zettGlow h-1" style="width: 0%"></div></div></div>
+                                <div><div class="flex justify-between mb-0.5"><span>D2: Inovasi</span><span id="g-d2-val" class="font-bold text-blue-400">0%</span></div><div class="w-full bg-black/40 h-1"><div id="g-d2-bar" class="bg-blue-400 h-1" style="width: 0%"></div></div></div>
+                                <div><div class="flex justify-between mb-0.5"><span>D3: Proaktif</span><span id="g-d3-val" class="font-bold text-yellow-400">0%</span></div><div class="w-full bg-black/40 h-1"><div id="g-d3-bar" class="bg-yellow-400 h-1" style="width: 0%"></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-5">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-base font-bold text-white">Agregat OPD</h3>
+                            <select id="admin-filter-opd" onchange="adminFetchData(1)" class="bg-black/40 text-white text-[11px] rounded p-1 w-40 outline-none"><option value="">-- Semua OPD --</option></select>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs">
+                            <div class="relative w-20 h-20 rounded-full bg-slate-700 flex items-center justify-center admin-donut-opd" style="background: conic-gradient(#3b82f6 0deg, #1e293b 0);"><div class="absolute w-16 h-16 bg-zettCard rounded-full flex items-center justify-center"><span id="stat-iorg-opd" class="font-bold text-white">0%</span></div></div>
+                            <div class="w-full space-y-2">
+                                <div><div class="flex justify-between mb-0.5"><span>D1: Adaptasi</span><span id="o-d1-val" class="font-bold text-blue-400">0%</span></div><div class="w-full bg-black/40 h-1"><div id="o-d1-bar" class="bg-blue-400 h-1" style="width: 0%"></div></div></div>
+                                <div><div class="flex justify-between mb-0.5"><span>D2: Inovasi</span><span id="o-d2-val" class="font-bold text-blue-400">0%</span></div><div class="w-full bg-black/40 h-1"><div id="o-d2-bar" class="bg-blue-400 h-1" style="width: 0%"></div></div></div>
+                                <div><div class="flex justify-between mb-0.5"><span>D3: Proaktif</span><span id="o-d3-val" class="font-bold text-blue-400">0%</span></div><div class="w-full bg-black/40 h-1"><div id="o-d3-bar" class="bg-yellow-400 h-1" style="width: 0%"></div></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RESTORED: Leaderboards Top 10 & Top 5 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-2" id="panel-rank-global">
+                    <div class="glass-card rounded-2xl p-5 flex flex-col h-[280px]">
+                        <h3 class="text-sm font-bold text-yellow-400 mb-2.5 border-b border-white/10 pb-1"><i class="fa-solid fa-trophy mr-1.5"></i>Top 10 Kabupaten Demak</h3>
+                        <div class="overflow-x-auto flex-grow">
+                            <table class="w-full text-left text-[11px] text-gray-300 whitespace-nowrap">
+                                <thead class="bg-black/30 text-gray-400 text-[9px] uppercase"><tr><th class="px-2 py-1.5">Pegawai</th><th class="px-2 py-1.5">OPD</th><th class="px-2 py-1.5 text-right">Skor</th></tr></thead>
+                                <tbody id="top10-tbody" class="divide-y divide-white/5"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5 flex flex-col h-[280px]">
+                        <h3 class="text-sm font-bold text-blue-400 mb-2.5 border-b border-white/10 pb-1"><i class="fa-solid fa-medal mr-1.5"></i>Top 5 Perangkat Daerah</h3>
+                        <div class="overflow-x-auto flex-grow">
+                            <table class="w-full text-left text-[11px] text-gray-300 whitespace-nowrap">
+                                <thead class="bg-black/30 text-gray-400 text-[9px] uppercase"><tr><th class="px-2 py-1.5">Pegawai</th><th class="px-2 py-1.5 text-right">Skor</th></tr></thead>
+                                <tbody id="top5-tbody" class="divide-y divide-white/5"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABEL MASTER V7.4 -->
+                <div class="glass-card rounded-2xl mt-4 overflow-hidden">
+                    <div class="p-3 bg-black/20 flex flex-col sm:flex-row justify-between gap-2">
+                        <h3 class="font-semibold text-white text-xs flex items-center"><i class="fa-solid fa-list-check mr-2"></i>Riwayat Responden</h3>
+                        <input type="text" id="admin-search" placeholder="Cari NIP / Nama..." class="input-glass rounded px-2 py-1 text-[11px] w-full sm:w-44" onkeyup="if(event.key === 'Enter') adminFetchData(1)">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-gray-300 whitespace-nowrap">
+                            <thead class="bg-black/40 text-[9px] uppercase"><tr><th class="px-3 py-2">Waktu</th><th class="px-3 py-2">Pegawai</th><th class="px-3 py-2">OPD</th><th class="px-3 py-2">Skor/AI</th><th class="px-3 py-2 text-center">Aksi AI</th></tr></thead>
+                            <tbody id="admin-tbody" class="divide-y divide-white/5"></tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 bg-black/20 flex justify-between text-[10px]">
+                        <span id="admin-page-info" class="text-gray-400">Halaman 1</span>
+                        <div>
+                            <button onclick="adminChangePage(-1)" class="px-2 py-1 rounded bg-white/10 text-white"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button onclick="adminChangePage(1)" class="px-2 py-1 rounded bg-white/10 text-white"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- END TAB ANALYTICS -->
+
+            <!-- RESTORED: TAB B: CRUD USERS ADMIN MANAGEMENT -->
+            <div id="admin-tab-users" class="space-y-6 hidden-view">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="crud-user-section">
+                    <div class="glass-card rounded-2xl p-5 h-fit">
+                        <h3 class="text-sm font-bold text-white mb-3 border-b border-white/10 pb-1.5"><i class="fa-solid fa-user-plus text-blue-400 mr-2"></i>Tambah Admin OPD baru</h3>
+                        <form onsubmit="event.preventDefault(); crudCreateAdmin();" class="space-y-4 text-xs">
+                            <div>
+                                <label class="block text-gray-400 mb-1">Perangkat Daerah (OPD)</label>
+                                <select id="crud_opd" required class="input-glass w-full rounded-lg px-3 py-2 text-white [&>option]:bg-zettCard"><option value="">-- Pilih Instansi --</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 mb-1">Passcode / PIN Akses (6 Digit)</label>
+                                <input type="password" id="crud_pin" maxlength="6" minlength="6" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required class="input-glass w-full rounded-lg px-3 py-2 tracking-widest font-bold text-center" placeholder="••••••">
+                            </div>
+                            <button type="submit" class="w-full py-2.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition">Daftarkan Admin</button>
+                        </form>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5 lg:col-span-2 flex flex-col">
+                        <h3 class="text-sm font-bold text-white mb-3 border-b border-white/10 pb-1.5"><i class="fa-solid fa-users-viewfinder text-zettGlow mr-2"></i>Daftar Otoritas Pimpinan OPD</h3>
+                        <div class="overflow-x-auto flex-grow">
+                            <table class="w-full text-left text-xs text-gray-300 whitespace-nowrap">
+                                <thead class="bg-black/40 text-gray-400 text-[10px] uppercase"><tr><th class="px-3 py-2">ID</th><th class="px-3 py-2">Perangkat Daerah</th><th class="px-3 py-2">PIN</th><th class="px-3 py-2 text-center">Aksi</th></tr></thead>
+                                <tbody id="crud-users-tbody" class="divide-y divide-white/5"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- END TAB CRUD USERS -->
+
+        </div>
+    </main>
+
+    <div id="loader-overlay" class="fixed inset-0 bg-zettDark/80 backdrop-blur-sm z-[9999] flex-col items-center justify-center hidden-view"><div class="loader mb-4"></div><p class="text-zettGlow font-medium animate-pulse text-xs" id="loader-text">Memproses...</p></div>
+
+    <script>
+        const LIST_PD = [
+            "Sekretariat Daerah", "Sekretariat Dewan Perwakilan Rakyat Daerah", "Inspektorat Daerah", 
+            "Badan Kesatuan Bangsa dan Politik", "Badan Penanggulangan Bencana Daerah", 
+            "Badan Kepegawaian dan Pengembangan Sumber Daya Manusia", "Badan Perencanaan Pembangunan, Riset dan Inovasi Daerah", 
+            "Badan Pengelolaan Keuangan, Pendapatan dan Aset Daerah", "Satuan Polisi Pamong Praja",
+            "Dinas Pendidikan dan Kebudayaan", "Dinas Kepemudaan dan Olahraga", "Dinas Pariwisata", 
+            "Dinas Kesehatan Daerah", "Dinas Sosial, Pemberdayaan Perempuan dan Perlindungan Anak", 
+            "Dinas Kependudukan dan Pencatatan Sipil", "Dinas Pemberdayaan Masyarakat dan Desa, Pengendalian Penduduk dan Keluarga Berencana", 
+            "Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu", "Dinas Perdagangan, Koperasi dan Usaha Kecil Menengah", 
+            "Dinas Tenaga Kerja dan Perindustrian", "Dinas Komunikasi dan Informatika", "Dinas Pekerjaan Umum dan Penataan Ruang", 
+            "Dinas Perumahan dan Kawasan Permukiman", "Dinas Perhubungan", "Dinas Lingkungan Hidup", "Dinas Pertanian dan Pangan", 
+            "Dinas Kelautan dan Perikanan", "Dinas Perpustakaan dan Kearsipan", 
+            "Kecamatan Mranggen", "Kecamatan Karangawen", "Kecamatan Guntur", "Kecamatan Sayung", "Kecamatan Karangtengah", 
+            "Kecamatan Wonosalam", "Kecamatan Dempet", "Kecamatan Gajah", "Kecamatan Karanganyar", "Kecamatan Mijen", 
+            "Kecamatan Demak", "Kecamatan Bonang", "Kecamatan Wedung", "Kecamatan Kebonagung"
+        ];
+        
+        const questions = [
+            { id: 'Q1', text: "Saya cepat mempelajari sistem kerja atau aplikasi baru (seperti e-Kinerja, Srikandi, dll) yang diterapkan oleh instansi." }, 
+            { id: 'Q2', text: "Saya mudah dan cepat menyesuaikan diri dengan perubahan kebijakan atau regulasi organisasi tanpa resistensi." }, 
+            { id: 'Q3', text: "Saya secara terbuka menerima masukan, teguran, atau arahan dari atasan/rekan kerja senior untuk perbaikan cara kerja saya, tanpa merasa diserang secara personal." }, 
+            { id: 'Q4', text: "Saya tidak mengeluh dan tetap fokus pada target ketika ada penugasan mendadak, perubahan jadwal, atau dipindahkan ke tim yang berbeda." }, 
+            { id: 'Q5', text: "Saya aktif mencari solusi sendiri terlebih dahulu saat menghadapi kendala baru di lapangan, alih-alih langsung melempar masalah kepada pimpinan." }, 
+            { id: 'Q6', text: "Saya secara nyata mendukung dan mempraktikkan program reformasi birokrasi (seperti Zona Integritas) di OPD tempat saya bertugas." },
+            { id: 'Q7', text: "Saya menyadari bahwa beradaptasi membutuhkan waktu, sehingga saya sabar dan fokus pada pencapaian langkah demi langkah, tanpa merasa frustrasi jika tidak langsung menguasai seluruh sistem." },
+            { id: 'Q8', text: "Saya rutin memberikan usulan, ide, atau cara-cara baru yang lebih efisien kepada atasan atau tim untuk menyelesaikan tugas-tugas rutin." }, 
+            { id: 'Q9', text: "Saya secara aktif memanfaatkan teknologi digital atau tools kolaborasi untuk mempermudah penyelesaian pekerjaan birokrasi." }, 
+            { id: 'Q10', text: "Saat menghadapi keterbatasan sumber daya (anggaran/fasilitas) di unit kerja, saya mampu menemukan jalan keluar alternatif agar target pelayanan tetap tercapai." }, 
+            { id: 'Q11', text: "Saat saya mencoba pendekatan inovasi baru dan melakukan kesalahan, saya tidak menyerah karena malu, melainkan menjadikannya sebagai evaluasi untuk memperbaiki diri." }, 
+            { id: 'Q12', text: "Saya secara konsisten meluangkan waktu sedikit demi sedikit namun rutin setiap harinya untuk mempelajari keterampilan/keahlian baru, alih-alih belajar secara sporadis." },
+            { id: 'Q13', text: "Saya berinisiatif mengambil tugas atau tanggung jawab ekstra yang relevan dengan sasaran kinerja, tanpa harus selalu menunggu instruksi detail." }, 
+            { id: 'Q14', text: "Saya terbiasa memetakan potensi kendala teknis maupun administratif dalam pekerjaan saya dan menyiapkan langkah pencegahan." }, 
+            { id: 'Q15', text: "Saya berani mengambil keputusan cepat (yang masih dalam batas kewenangan saya) saat situasi mendesak, demi memastikan tidak terhentinya layanan publik." }, 
+            { id: 'Q16', text: "Saya secara proaktif bertanya kepada rekan senior atau pimpinan terkait alasan ('kenapa' dan 'bagaimana') di balik suatu SOP, agar saya benar-benar memahaminya." }, 
+            { id: 'Q17', text: "Saya pernah menganalisis dan mengusulkan penyederhanaan alur kerja (SOP) di unit saya agar layanan/proses kerja menjadi lebih cepat." }
+        ];
+
+        let currentWizardStep = 0; let adminCurrentPage = 1; let sessionAdminUnlocked = false; let sessionAdminRole = "Admin Pemda"; let sessionAdminOpd = "Semua";
+
+        function customAlert(title, htmlMsg, isError = true) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-msg').innerHTML = htmlMsg;
+            document.getElementById('alert-icon').className = isError ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-wand-magic-sparkles text-purple-400";
+            document.getElementById('custom-alert').classList.remove('hidden-view');
+        }
+        function closeAlert() { document.getElementById('custom-alert').classList.add('hidden-view'); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderQuestions('q-container-1', 0, 7); 
+            renderQuestions('q-container-2', 7, 12); 
+            renderQuestions('q-container-3', 12, 17);
+            
+            let opdHtml = ''; 
+            for(let i=0; i<LIST_PD.length; i++) { opdHtml += '<option value="' + LIST_PD[i] + '">' + LIST_PD[i] + '</option>'; }
+            document.getElementById('inp_opd').innerHTML += opdHtml;
+            document.getElementById('admin-filter-opd').innerHTML += opdHtml;
+            document.getElementById('crud_opd').innerHTML += opdHtml; // Restored
+            
+            fetchHomeStats();
+        });
+
+        // ================= ROUTING & TAB NAVIGATION =================
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden-view'));
+            document.getElementById('view-' + viewId).classList.remove('hidden-view');
+            if(viewId === 'admin') { switchAdminTab('analytics'); }
+            if(viewId === 'home') { fetchHomeStats(); }
+        }
+        
+        function switchAdminTab(tabName) {
+            const btnAnalytics = document.getElementById('tab-btn-analytics');
+            const btnUsers = document.getElementById('tab-btn-users');
+            const viewAnalytics = document.getElementById('admin-tab-analytics');
+            const viewUsers = document.getElementById('admin-tab-users');
+            
+            if (tabName === 'analytics') {
+                btnAnalytics.className = "px-4 py-2 border-b-2 border-zettGreen text-white font-bold";
+                btnUsers.className = "px-4 py-2 text-gray-400 font-medium hover:text-white transition";
+                viewAnalytics.classList.remove('hidden-view'); viewUsers.classList.add('hidden-view');
+                adminFetchData(1);
+            } else {
+                btnUsers.className = "px-4 py-2 border-b-2 border-zettGreen text-white font-bold";
+                btnAnalytics.className = "px-4 py-2 text-gray-400 font-medium hover:text-white transition";
+                viewUsers.classList.remove('hidden-view'); viewAnalytics.classList.add('hidden-view');
+                crudFetchUsersList();
+            }
+        }
+        
+        function toggleLoader(show, text = 'Memproses...') {
+            document.getElementById('loader-text').innerText = text;
+            if(show) { document.getElementById('loader-overlay').style.display = 'flex'; document.getElementById('loader-overlay').classList.remove('hidden-view'); } 
+            else { document.getElementById('loader-overlay').classList.add('hidden-view'); }
+        }
+
+        const safeParseFloat = (val) => { if (!val) return 0; let num = parseFloat(val.toString().replace(',', '.')); return isNaN(num) ? 0 : num; };
+        const formatDesimal = (val) => safeParseFloat(val).toFixed(2).replace('.', ',');
+        const getBadgeColor = (indeks) => safeParseFloat(indeks) >= 68 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : safeParseFloat(indeks) >= 36 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30';
+
+        // ================= AUTHENTICATION =================
+        function openLoginModal() { if(sessionAdminUnlocked) { switchView('admin'); } else { document.getElementById('modal-login').classList.remove('hidden-view'); } }
+        function closeLoginModal() { document.getElementById('modal-login').classList.add('hidden-view'); document.getElementById('inp_pin').value = ''; }
+        
+        function submitLoginAdmin() {
+            const pin = document.getElementById('inp_pin').value;
+            toggleLoader(true, "Membuka enkripsi...");
+            if(typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if(res.status === 'success') {
+                        sessionAdminUnlocked = true; sessionAdminRole = res.role; sessionAdminOpd = res.opd;
+                        closeLoginModal();
+                        
+                        // Proteksi Multi-Tenant UI
+                        const filterOpd = document.getElementById('admin-filter-opd');
+                        const tabBtnUsers = document.getElementById('tab-btn-users');
+                        const panelGlobalGraph = document.getElementById('panel-graph-global');
+                        const panelGlobalRank = document.getElementById('panel-rank-global');
+                        
+                        if (res.role === "Pimpinan OPD") { 
+                            filterOpd.value = res.opd; filterOpd.disabled = true;
+                            tabBtnUsers.classList.add('hidden-view');
+                            panelGlobalGraph.classList.add('hidden-view');
+                            panelGlobalRank.classList.add('hidden-view');
+                        } else { 
+                            filterOpd.value = ""; filterOpd.disabled = false; 
+                            tabBtnUsers.classList.remove('hidden-view');
+                            panelGlobalGraph.classList.remove('hidden-view');
+                            panelGlobalRank.classList.remove('hidden-view');
+                        }
+                        switchView('admin');
+                    } else { customAlert("Akses Ditolak", res.message, true); document.getElementById('inp_pin').value = ''; }
+                }).verifikasiPin(pin);
+            } else { setTimeout(() => { toggleLoader(false); sessionAdminUnlocked=true; closeLoginModal(); switchView('admin'); }, 800); }
+        }
+        function logoutAdmin() { sessionAdminUnlocked = false; switchView('home'); }
+        
+        function openUbahPinModal() { document.getElementById('modal-ubah-pin').classList.remove('hidden-view'); }
+        function closeUbahPinModal() { document.getElementById('modal-ubah-pin').classList.add('hidden-view'); document.getElementById('inp_pin_lama').value = ''; document.getElementById('inp_pin_baru').value = ''; }
+        function submitUbahPin() {
+            const oldPin = document.getElementById('inp_pin_lama').value; const newPin = document.getElementById('inp_pin_baru').value;
+            toggleLoader(true, "Memperbarui PIN...");
+            if(typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if(res.status === 'success') { customAlert("Sukses", "PIN Diperbarui!", false); closeUbahPinModal(); } else { customAlert("Gagal", res.message, true); }
+                }).ubahPinSelf(oldPin, newPin);
+            } else { setTimeout(() => { toggleLoader(false); customAlert("Sukses", "PIN diubah (Mock).", false); closeUbahPinModal(); }, 800); }
+        }
+
+        // ================= HOME STATS =================
+        function fetchHomeStats() {
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    document.getElementById('home-total-respondents').innerText = res.globalStats.count;
+                    const gIorg = safeParseFloat(res.globalStats.I_org);
+                    document.getElementById('home-iorg-val').innerText = formatDesimal(gIorg) + '%'; 
+                    document.querySelector('.home-donut').style.background = 'conic-gradient(#10b981 ' + ((gIorg/100)*360) + 'deg, #1e293b 0)';
+                    document.getElementById('h-d1-val').innerText = formatDesimal(res.globalStats.D1) + '%'; document.getElementById('h-d1-bar').style.width = res.globalStats.D1 + '%';
+                    document.getElementById('h-d2-val').innerText = formatDesimal(res.globalStats.D2) + '%'; document.getElementById('h-d2-bar').style.width = res.globalStats.D2 + '%';
+                    document.getElementById('h-d3-val').innerText = formatDesimal(res.globalStats.D3) + '%'; document.getElementById('h-d3-bar').style.width = res.globalStats.D3 + '%';
+                    document.getElementById('home-aggregate-loader').classList.add('hidden-view'); document.getElementById('home-aggregate-content').classList.remove('hidden-view');
+                }).ambilDataAdmin(1, 1, "", "", "Admin Pemda", "Semua");
+            }
+        }
+
+        // ================= DYNAMIC INJECTION UI WITH BRANCHING LOGIC =================
+        function renderQuestions(containerId, startIdx, endIdx) {
+            var container = document.getElementById(containerId);
+            var html = '';
+            var options = [1, 2, 3, 4, 5];
+            var labels = ["Tidak Pernah", "Jarang", "Kadang-kadang", "Sering", "Selalu"];
+            var targetFU = ['Q1', 'Q4', 'Q8', 'Q11', 'Q13', 'Q17'];
+
+            for(var i = startIdx; i < endIdx; i++) {
+                var q = questions[i];
+                html += '<div class="bg-black/20 p-4 rounded-xl border border-white/5">';
+                html += '<p class="text-xs md:text-sm text-gray-200 mb-4"><span class="font-bold text-zettGlow mr-1">' + q.id + '.</span> ' + q.text + '</p>';
+                html += '<div class="grid grid-cols-5 gap-2">';
+                for(var j=0; j<options.length; j++) {
+                    html += '<label class="radio-card cursor-pointer relative group">';
+                    html += '<input type="radio" name="' + q.id + '" value="' + options[j] + '" onchange="handleFollowUp(\'' + q.id + '\', this.value)" class="peer absolute opacity-0 w-0 h-0">';
+                    html += '<div class="w-full h-full flex flex-col justify-center text-center py-2 rounded border border-white/20 text-gray-400 group-hover:border-zettGreen/50 transition">';
+                    html += '<span class="block text-sm font-bold">' + options[j] + '</span>';
+                    html += '<span class="block text-[8px] mt-0.5 leading-tight">' + labels[j] + '</span>';
+                    html += '</div></label>';
+                }
+                html += '</div>';
+                
+                var isTarget = false;
+                for(var k=0; k<targetFU.length; k++) { if(targetFU[k] === q.id) isTarget = true; }
+                if(isTarget) { html += '<div id="fu_' + q.id + '" class="hidden-view mt-4 p-4 bg-black/40 rounded-lg border border-white/10 shadow-inner"></div>'; }
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        }
+
+        function handleFollowUp(qId, valStr) {
+            var valNum = parseInt(valStr, 10);
+            var container = document.getElementById('fu_' + qId);
+            if (!container) return;
+
+            var html = '';
+            if (valNum === 4 || valNum === 5) {
+                var labelDesc = '';
+                if (qId === 'Q1' || qId === 'Q4') {
+                    labelDesc = 'Ceritakan satu pengalaman spesifik di mana Anda diberi tugas mendadak yang menggunakan aplikasi/sistem yang belum pernah Anda pakai. Bagaimana cara Anda menyelesaikannya?';
+                } else if (qId === 'Q8' || qId === 'Q11') {
+                    labelDesc = 'Anda mengklaim Sering/Selalu memberikan gagasan baru atau tidak takut gagal. Sebutkan satu ide perbaikan/inovasi yang pernah Anda usulkan di unit Anda, atau satu kesalahan teknis yang pernah Anda buat saat mencoba hal baru. Apa respons atasan dan apa perbaikan yang Anda lakukan setelahnya?';
+                } else if (qId === 'Q13' || qId === 'Q17') {
+                    labelDesc = 'Anda menyatakan Sering/Selalu mengambil inisiatif dan menyederhanakan proses. Berikan satu contoh nyata inisiatif pekerjaan di luar instruksi rutin yang Anda kerjakan secara mandiri, atau contoh alur kerja yang Anda bantu percepat penyelesaiannya!';
+                }
+                
+                html += '<label class="block text-xs text-zettGlow font-semibold mb-1">Ceritakan Pengalaman Anda (' + qId + '):</label>';
+                html += '<p class="text-[10px] text-gray-300 mb-2">' + labelDesc + '</p>';
+                html += '<textarea id="' + qId + '_FU" name="' + qId + '_FU" class="input-glass w-full rounded-lg px-3 py-2 text-xs min-h-[60px]" placeholder="Ketik jawaban Anda di sini..."></textarea>';
+                container.innerHTML = html; 
+                container.classList.remove('hidden-view');
+            } else if (valNum === 1) {
+                var opts = [];
+                if (qId === 'Q1' || qId === 'Q4') {
+                    opts = [
+                        'Kurangnya pendampingan teknis/Bimtek', 
+                        'Arahan pimpinan kurang jelas', 
+                        'Beban kerja terlalu berat', 
+                        'Infrastruktur/fasilitas kerja kurang memadai (misal: jaringan internet atau perangkat)', 
+                        'Lainnya...'
+                    ];
+                } else if (qId === 'Q8' || qId === 'Q11' || qId === 'Q13' || qId === 'Q17') {
+                    opts = [
+                        'Takut salah dan ditegur atasan', 
+                        'Merasa gagasan tidak akan dihargai/didengar', 
+                        'Takut dibilang \'cari muka\' oleh rekan kerja', 
+                        'Terhalang aturan birokrasi yang kaku', 
+                        'Lainnya...'
+                    ];
+                }
+                
+                html += '<label class="block text-xs text-yellow-400 font-semibold mb-2">Apa alasan/hambatan utama yang Anda rasakan?</label>';
+                html += '<div class="space-y-1.5 text-[10px]">';
+                for(var m=0; m<opts.length; m++) { 
+                    html += '<label class="flex items-start gap-2 text-gray-300 cursor-pointer"><input type="radio" name="' + qId + '_FU" value="' + opts[m] + '"> ' + opts[m] + '</label>'; 
+                }
+                html += '</div>';
+                container.innerHTML = html; 
+                container.classList.remove('hidden-view');
+            } else { 
+                container.innerHTML = ''; 
+                container.classList.add('hidden-view'); 
+            }
+        }
+
+        function startSurvey() { currentWizardStep = 0; document.getElementById('surveyForm').reset(); updateWizardUI(); switchView('survey'); }
+        function updateWizardUI() {
+            for(let i=0; i<=3; i++) document.getElementById('step-'+i).classList.add('hidden-view');
+            document.getElementById('step-'+currentWizardStep).classList.remove('hidden-view');
+            const titles = ["Identitas Diri", "Dimensi 1: Adaptasi", "Dimensi 2: Inovasi", "Dimensi 3: Proaktif"];
+            document.getElementById('wizard-title').innerText = titles[currentWizardStep]; document.getElementById('current-step-indicator').innerText = currentWizardStep + 1;
+            const btnPrev = document.getElementById('btn-prev'); const btnNext = document.getElementById('btn-next');
+            if(currentWizardStep === 0) { btnPrev.classList.add('hidden'); document.getElementById('btn-prev-spacer').classList.remove('hidden'); } else { btnPrev.classList.remove('hidden'); document.getElementById('btn-prev-spacer').classList.add('hidden'); }
+            if(currentWizardStep === 3) { btnNext.innerHTML = 'Kirim Respon'; btnNext.classList.replace('bg-zettGreen', 'bg-blue-600'); } else { btnNext.innerHTML = 'Lanjut <i class="fa-solid fa-arrow-right ml-1"></i>'; btnNext.classList.replace('bg-blue-600', 'bg-zettGreen'); }
+        }
+        function prevWizardStep() { if(currentWizardStep > 0) { currentWizardStep--; updateWizardUI(); } }
+        
+        function nextWizardStep() {
+            if(currentWizardStep === 0) {
+                const nip = document.getElementById('inp_nip'); const nama = document.getElementById('inp_nama'); const opd = document.getElementById('inp_opd'); const jabatan = document.getElementById('inp_jabatan');
+                if(!nip.value || nip.value.length !== 18) { customAlert("Validasi Error", "NIP wajib terisi 18 Angka!"); nip.focus(); return; } if(!nama.value) { customAlert("Validasi Error", "Nama wajib diisi!"); nama.focus(); return; } if(!opd.value) { customAlert("Validasi Error", "Pilih Instansi!"); opd.focus(); return; } if(!jabatan.value) { customAlert("Validasi Error", "Isi Jabatan!"); jabatan.focus(); return; }
+            }
+            if(currentWizardStep > 0) {
+                let startQ = currentWizardStep===1?1:currentWizardStep===2?8:13; let endQ = currentWizardStep===1?7:currentWizardStep===2?12:17;
+                var targetFU = ['Q1', 'Q4', 'Q8', 'Q11', 'Q13', 'Q17'];
+                
+                for(let i = startQ; i <= endQ; i++) {
+                    let qIdStr = 'Q' + i;
+                    const radios = document.getElementsByName(qIdStr); let isAns = false; let valSelected = 0;
+                    for(let r=0; r<radios.length; r++) { if(radios[r].checked) { isAns = true; valSelected = parseInt(radios[r].value, 10); } }
+                    if(!isAns) { customAlert("Belum Selesai", "Pertanyaan " + qIdStr + " belum terisi."); return; }
+                    
+                    var isTarget = false;
+                    for(var k=0; k<targetFU.length; k++) { if(targetFU[k] === qIdStr) isTarget = true; }
+                    
+                    if(isTarget && (valSelected === 1 || valSelected === 4 || valSelected === 5)) {
+                        if(valSelected === 4 || valSelected === 5) {
+                            var textFu = document.getElementById(qIdStr + '_FU');
+                            if(!textFu || textFu.value.trim() === '') { customAlert("Teks Dibutuhkan", "Mohon isi deskripsi pengalaman Anda pada pertanyaan lanjutan " + qIdStr); return; }
+                        } else if (valSelected === 1) {
+                            var optsFu = document.getElementsByName(qIdStr + '_FU');
+                            var optChecked = false;
+                            for(var m=0; m<optsFu.length; m++) { if(optsFu[m].checked) optChecked = true; }
+                            if(!optChecked) { customAlert("Pilihan Dibutuhkan", "Mohon pilih alasan/hambatan Anda pada pertanyaan lanjutan " + qIdStr); return; }
+                        }
+                    }
+                }
+            }
+            if(currentWizardStep < 3) { currentWizardStep++; updateWizardUI(); } else { prosesKirimSurvei(); }
+        }
+
+        async function prosesKirimSurvei() {
+            toggleLoader(true, "Mengirim data...");
+            const rawData = { nip: document.getElementById('inp_nip').value, nama: document.getElementById('inp_nama').value, opd: document.getElementById('inp_opd').value, jabatan: document.getElementById('inp_jabatan').value };
+            for(let i=1; i<=17; i++) { const radios = document.getElementsByName('Q'+i); for(let r=0; r<radios.length; r++) { if(radios[r].checked) rawData['Q'+i] = radios[r].value; } }
+            
+            var targetFU = ['Q1', 'Q4', 'Q8', 'Q11', 'Q13', 'Q17'];
+            for(let i=0; i<targetFU.length; i++) {
+                let qId = targetFU[i]; let valStr = rawData[qId];
+                if(valStr === '4' || valStr === '5') { var el = document.getElementById(qId + '_FU'); rawData[qId + '_FU'] = el ? el.value : "-"; } 
+                else if (valStr === '1') { var opts = document.getElementsByName(qId + '_FU'); var foundOpt = false; for(var m=0; m<opts.length; m++) { if(opts[m].checked) { rawData[qId + '_FU'] = opts[m].value; foundOpt = true; } } if(!foundOpt) rawData[qId + '_FU'] = "-"; } 
+                else { rawData[qId + '_FU'] = "-"; }
+            }
+
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => { toggleLoader(false); if(res.status === 'success') tampilkanHasil(res); else customAlert("Error", "Gagal menyimpan: " + res.message); }).simpanRespon(JSON.stringify(rawData));
+            } else { setTimeout(() => { toggleLoader(false); tampilkanHasil({indeks: "85,47", kategori: 'Sangat Baik', rekomendasi: "Rekomendasi sistem.", nama: rawData.nama, nip: rawData.nip, opd: rawData.opd}); }, 1200); }
+        }
+
+        function tampilkanHasil(data) {
+            document.getElementById('print-nama').innerText = data.nama; document.getElementById('print-nip').innerText = data.nip; document.getElementById('print-opd').innerText = data.opd;
+            document.getElementById('res-indeks').innerText = data.indeks; document.getElementById('res-kategori').innerText = data.kategori;
+            switchView('result');
+        }
+
+        // ================= ADMIN DASHBOARD RENDERER =================
+        function adminChangePage(delta) { adminFetchData(adminCurrentPage + delta); }
+        function adminFetchData(page) {
+            toggleLoader(true, "Sinkronisasi data multi-tenant...");
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => { toggleLoader(false); if(res.status === 'success') renderAdminTable(res, page); })
+                .ambilDataAdmin(page, 10, document.getElementById('admin-search').value, document.getElementById('admin-filter-opd').value, sessionAdminRole, sessionAdminOpd);
+            } else { setTimeout(() => { toggleLoader(false); }, 600); }
+        }
+
+        function renderAdminTable(res, requestedPage) {
+            adminCurrentPage = res.currentPage || 1;
+            document.getElementById('admin-profile-desc').innerText = 'Otoritas: ' + sessionAdminRole + ' | Area: ' + (sessionAdminRole === 'Pimpinan OPD' ? sessionAdminOpd : 'Semua');
+            
+            // Kounter
+            document.getElementById('stat-total-pemda').innerText = res.globalStats.count;
+            document.getElementById('stat-total-opd').innerText = res.opdStats.count;
+            
+            // Agregat Global
+            const gIorg = safeParseFloat(res.globalStats.I_org);
+            document.getElementById('stat-iorg-global').innerText = formatDesimal(gIorg) + '%'; 
+            document.querySelector('.admin-donut-global').style.background = 'conic-gradient(#10b981 ' + ((gIorg/100)*360) + 'deg, #1e293b 0)';
+            document.getElementById('g-d1-val').innerText = formatDesimal(res.globalStats.D1) + '%'; document.getElementById('g-d1-bar').style.width = res.globalStats.D1 + '%';
+            document.getElementById('g-d2-val').innerText = formatDesimal(res.globalStats.D2) + '%'; document.getElementById('g-d2-bar').style.width = res.globalStats.D2 + '%';
+            document.getElementById('g-d3-val').innerText = formatDesimal(res.globalStats.D3) + '%'; document.getElementById('g-d3-bar').style.width = res.globalStats.D3 + '%';
+
+            // Agregat OPD
+            const filterVal = document.getElementById('admin-filter-opd').value;
+            let opdIorg = (filterVal !== "" || sessionAdminRole === "Pimpinan OPD") ? safeParseFloat(res.opdStats.I_org) : gIorg;
+            let d1O = (filterVal !== "" || sessionAdminRole === "Pimpinan OPD") ? res.opdStats.D1 : res.globalStats.D1;
+            let d2O = (filterVal !== "" || sessionAdminRole === "Pimpinan OPD") ? res.opdStats.D2 : res.globalStats.D2;
+            let d3O = (filterVal !== "" || sessionAdminRole === "Pimpinan OPD") ? res.opdStats.D3 : res.globalStats.D3;
+
+            document.getElementById('stat-iorg-opd').innerText = (filterVal==="" && sessionAdminRole==="Admin Pemda") ? "All" : formatDesimal(opdIorg) + '%';
+            document.querySelector('.admin-donut-opd').style.background = 'conic-gradient(#3b82f6 ' + ((opdIorg/100)*360) + 'deg, #1e293b 0)';
+            document.getElementById('o-d1-val').innerText = formatDesimal(d1O) + '%'; document.getElementById('o-d1-bar').style.width = d1O + '%';
+            document.getElementById('o-d2-val').innerText = formatDesimal(d2O) + '%'; document.getElementById('o-d2-bar').style.width = d2O + '%';
+            document.getElementById('o-d3-val').innerText = formatDesimal(d3O) + '%'; document.getElementById('o-d3-bar').style.width = d3O + '%';
+
+            // RESTORED: Top 10 Global Table
+            const tbodyGlobal = document.getElementById('top10-tbody'); tbodyGlobal.innerHTML = '';
+            if(res.top10Global.length === 0) { tbodyGlobal.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">Belum ada data</td></tr>'; }
+            else {
+                for(let i=0; i<res.top10Global.length; i++) {
+                    let r = res.top10Global[i];
+                    let medal = i===0 ? '🏆' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1)+'.';
+                    tbodyGlobal.innerHTML += '<tr class="hover:bg-white/5"><td class="px-2 py-1.5"><div class="font-bold text-white text-xs">' + medal + ' ' + r.nama + '</div><div class="text-[9px] text-gray-400">NIP: ' + r.nip + '</div></td><td class="px-2 py-1.5 text-[9px] text-gray-400 whitespace-normal">' + r.opd + '</td><td class="px-2 py-1.5 text-right"><div class="font-bold text-zettGlow">' + formatDesimal(r.indeks) + '%</div><span class="px-1.5 py-0.5 rounded text-[8px] font-semibold ' + getBadgeColor(r.indeks) + '">' + r.kategori + '</span></td></tr>';
+                }
+            }
+
+            // RESTORED: Top 5 OPD Table
+            const tbodyOpd = document.getElementById('top5-tbody'); tbodyOpd.innerHTML = '';
+            if(filterVal === "" && sessionAdminRole === "Admin Pemda") { tbodyOpd.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-gray-500 text-[11px]">Pilih filter OPD untuk melihat ranking internal</td></tr>'; }
+            else if(res.top5Opd.length === 0) { tbodyOpd.innerHTML = '<tr><td colspan="2" class="text-center py-4 text-gray-500 text-[11px]">Belum ada responden di instansi ini</td></tr>'; }
+            else {
+                for(let i=0; i<res.top5Opd.length; i++) {
+                    let r = res.top5Opd[i];
+                    let medal = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1)+'.';
+                    tbodyOpd.innerHTML += '<tr class="hover:bg-white/5"><td class="px-2 py-1.5"><div class="font-bold text-white text-xs">' + medal + ' ' + r.nama + '</div><div class="text-[9px] text-gray-400">NIP: ' + r.nip + '</div></td><td class="px-2 py-1.5 text-right"><div class="font-bold text-blue-400">' + formatDesimal(r.indeks) + '%</div><span class="px-1.5 py-0.5 rounded text-[8px] font-semibold ' + getBadgeColor(r.indeks) + '">' + r.kategori + '</span></td></tr>';
+                }
+            }
+
+            // Master Table Riwayat Responden
+            const tbody = document.getElementById('admin-tbody'); tbody.innerHTML = '';
+            if(res.data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-500">Tidak ada riwayat survei.</td></tr>'; }
+            else {
+                for(let i=0; i<res.data.length; i++) {
+                    let row = res.data[i];
+                    let aiBadge = row.status_ai === 'Terkoreksi' ? '<span class="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded ml-1"><i class="fa-solid fa-wand-magic-sparkles"></i> AI</span>' : 
+                                  row.status_ai === 'Tervalidasi (Aman)' ? '<span class="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded ml-1"><i class="fa-solid fa-check"></i> Aman</span>' : '';
+                                  
+                    tbody.innerHTML += '<tr class="hover:bg-white/5 transition"><td class="px-3 py-2 text-[10px] text-gray-500">' + row.timestamp + '</td><td class="px-3 py-2"><div class="text-xs text-white">' + row.nama + '</div><div class="text-[9px] text-gray-400">' + row.nip + '</div></td><td class="px-3 py-2 text-[9px] text-gray-400 whitespace-normal">' + row.opd + '</td><td class="px-3 py-2"><div class="font-bold text-white text-xs">' + formatDesimal(row.indeks) + '%' + aiBadge + '</div></td><td class="px-3 py-2 text-center"><button onclick="jalanKoreksiAI(\'' + row.id + '\')" class="bg-indigo-600/30 text-indigo-300 border border-indigo-500/50 hover:bg-indigo-600 hover:text-white px-2 py-1 rounded text-[9px] font-bold transition"><i class="fa-solid fa-robot"></i> Koreksi AI</button></td></tr>';
+                }
+            }
+            document.getElementById('admin-page-info').innerText = 'Halaman ' + adminCurrentPage;
+        }
+
+        // ================= RESTORED: CRUD USER ADMIN =================
+        function crudFetchUsersList() {
+            const tbody = document.getElementById('crud-users-tbody'); tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400 animate-pulse text-xs">Menyinkronkan data pengguna...</td></tr>';
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    if (res.status === 'success') { crudRenderUsersTable(res.data); }
+                }).listUserAdmin();
+            }
+        }
+
+        function crudRenderUsersTable(data) {
+            const tbody = document.getElementById('crud-users-tbody'); tbody.innerHTML = '';
+            if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500 text-xs">Belum ada Admin OPD terdaftar.</td></tr>'; return; }
+            for(let i=0; i<data.length; i++) {
+                let user = data[i];
+                tbody.innerHTML += '<tr class="hover:bg-white/5"><td class="px-3 py-2.5 font-mono font-bold text-blue-400">' + user.id + '</td><td class="px-3 py-2.5"><div class="font-medium text-white">' + user.opd + '</div><div class="text-[9px] text-gray-400">' + user.role + '</div></td><td class="px-3 py-2.5 font-mono tracking-wider">••••• (' + user.pin + ')</td><td class="px-3 py-2.5 text-center"><button onclick="crudDeleteAdmin(' + user.index + ', \'' + user.opd + '\')" class="text-red-400 hover:text-red-500 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i> Hapus</button></td></tr>';
+            }
+        }
+
+        function crudCreateAdmin() {
+            const opd = document.getElementById('crud_opd').value; const pin = document.getElementById('crud_pin').value;
+            if (!opd || pin.length !== 6) { customAlert("Error", "Mohon pastikan instansi dipilih dan PIN berjumlah 6 digit."); return; }
+            toggleLoader(true, "Mendaftarkan Pimpinan OPD...");
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if (res.status === 'success') {
+                        customAlert("Sukses", "Otoritas Pimpinan OPD untuk " + opd + " berhasil dibuat.", false);
+                        document.getElementById('crud_pin').value = ''; document.getElementById('crud_opd').value = '';
+                        crudFetchUsersList();
+                    }
+                }).simpanUserAdmin(opd, pin);
+            }
+        }
+
+        function crudDeleteAdmin(rowIndex, opdName) {
+            if (!confirm("Apakah Anda yakin ingin mencabut hak akses Admin OPD dari " + opdName + "?")) return;
+            toggleLoader(true, "Membatalkan hak akses...");
+            if (typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if (res.status === 'success') { customAlert("Sukses", "Hak akses dicabut!", false); crudFetchUsersList(); }
+                }).hapusUserAdmin(rowIndex);
+            }
+        }
+
+        // ================= FUNGSI AI & EXPORT =================
+        function jalanKoreksiAI(rowId) {
+            toggleLoader(true, "AI sedang memvalidasi JSON...");
+            if(typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if(res.status === 'success') { customAlert("Validasi Selesai", "Data responden ini telah diperiksa oleh AI.", false); adminFetchData(adminCurrentPage); }
+                    else { customAlert("Gagal AI", res.message, true); } 
+                }).prosesKoreksiAI(rowId);
+            } else { setTimeout(() => { toggleLoader(false); customAlert("Mockup", "Fitur AI dinonaktifkan di mode Canvas.", true); }, 1500); }
+        }
+
+        function generateAIReport() {
+            toggleLoader(true, "Menganalisa hambatan via Gemini AI...");
+            if(typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if(res.status === 'success') { customAlert("Skenario B: Laporan Eksekutif", res.report, false); }
+                    else { customAlert("Gagal AI", res.message, true); }
+                }).generateExecutiveSummaryAI();
+            } else { setTimeout(() => { toggleLoader(false); customAlert("Mockup", "Fitur AI dinonaktifkan di mode Canvas.", true); }, 2000); }
+        }
+
+        function downloadCSV() {
+            toggleLoader(true, "Menghimpun CSV...");
+            if(typeof google !== 'undefined') {
+                google.script.run.withSuccessHandler(res => {
+                    toggleLoader(false);
+                    if(res.status === 'success') {
+                        const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.setAttribute("download", "SAPA_Data_AI.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    }
+                }).downloadDataCSV();
+            } else { setTimeout(() => { toggleLoader(false); customAlert("Info", "Export dinonaktifkan di mode Canvas.", true); }, 1000); }
+        }
+    </script>
+</body>
+</html>
